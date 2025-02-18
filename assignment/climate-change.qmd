@@ -1,6 +1,6 @@
 ---
 title: "Climate Change Module"
-author: 'Add name'
+author: Aum Patel
 format:
   html:
     embed-resources: true
@@ -45,13 +45,21 @@ Describe the overall trend in the CO2 data.
 
 **Answer 1:**
 
+The overall trend in the CO2 data shows a steady and significant increase in atmospheric CO2 concentrations over time. There is a positive linear correlation.
+
 **Question 2:**
 
 How does CO2 vary within a year?  What month is it at max?  Min?  What might explain this sub-annual pattern? (you will need to write code and make a plot to answer this question)
 
 **Answer 2:**
 
-
+```{r}
+ggplot(co2, aes(x = month, y = monthly_average, group = year)) +
+  geom_line() +
+  stat_summary(fun = mean, geom = "line", color = "red") +
+  labs(x = "Month", y = "CO2 concentration (ppm)", title = "Variation of CO2 Levels")
+```
+The highest levels are in May and the lowest are around September. The CO2 levels most likely vary because of photosynthetic rates. When plants release CO2 in the fall and winter, they steadily increase. 
 
 ## Global Temperature Data
 
@@ -65,12 +73,14 @@ Data from: <https://climate.nasa.gov/vital-signs/global-temperature/>
 
 Describe the data set to the best of your ability, given the documentation provided. 
 
-- Where is the data from?
+- Where is the data from? 
 - Describe the class of each column and what units it is measured in. 
 - What is the difference between "global temperature" and "global temperature anomaly"? 
 
 **Answer 3:**
-
+The data is from NASA’s Goddard Institute for Space Studies.
+The columns are the calendar year and the difference in temperature from the norm. 
+Global temp is the temperature of the the planet and global temperature anomaly is the difference from the mean temperature based on trends.
 
 **Question 4:**
 
@@ -79,12 +89,35 @@ Construct the necessary R code to import and prepare for plotting the following 
 You'll need to determine the file's delimiter and any comments or skips. You will also need to be sure that you have column names. You will not directly use the code above to read the CO2 data, but that code provides helpful tips for reading the data.
 
 **Answer 4:**
+```{r}
+url <- "https://data.giss.nasa.gov/gistemp/graphs/graph_data/Global_Mean_Estimates_based_on_Land_and_Ocean_Data/graph.txt"
+
+global_temp <- read_table(url,
+                          col_names = c("Year", "No_Smoothing", "Lowess_5"),
+                          col_types = cols(
+                            Year = col_integer(), 
+                            No_Smoothing = col_double(), 
+                            Lowess_5 = col_double()
+                          ),
+                          skip = 5)
+
+```
 
 **Question 5:**
 
 Plot the trend in global mean temperatures over time.  Describe what you see in the plot and how you interpret the patterns you observe.
 
 **Answer 5:**
+```{r}
+ggplot(global_temp, aes(x = Year)) +
+  geom_line(aes(y = No_Smoothing), color = "red") +
+  geom_line(aes(y = Lowess_5), color = "blue") +
+  labs(x = "Year", y = "Temperature Anomaly (°C)", 
+       title = "Global Temperature Anomalies")
+
+```
+
+Based on the plot, the temperatures have increased at a fast rate. This graph shows the global warming trends.
 
 ## Evaluating the evidence for a "Pause" in warming?
 
@@ -97,6 +130,14 @@ You will use rolling averages to help you explore the evidence for a pause. Sinc
 Use a search engine (e.g., Google) or a chat LLM to find out how to calculate a rolling average in R. What search term or chat LLM prompt did you use?  What website or answer from the chat LLM did you end up using?  How much did you need to modify the code from the website or chat LLM to answer the question successfully?
 
 **Answer 6:**
+I looked up how to calculate rolling averages in R studio tidyverse using ChatGPT. It told me to employ the zoo package and make minor changes based on the structure of the table. 
+
+```{r}
+library(zoo)
+
+global_temp <- global_temp %>%
+  mutate(rolling_avg_5 = rollmean(No_Smoothing, k = 5, fill = NA))
+```
 
 **Question 7:**
 
@@ -104,19 +145,38 @@ Use a search engine (e.g., Google) or a chat LLM to find out how to calculate a 
 - Create a data frame from the annual temperature anomaly data (from Question 4) with three new columns: 5-year running averages, 10-year running averages, and 20-year running averages.
 
 **Answer 7:**
+The annual average is the temperature anomaly for each year, the 5-year average is the temperature anomaly over a 5 year span. 
+```{r}
+global_temp <- global_temp %>%
+  mutate(rolling_avg_5 = rollmean(No_Smoothing, k = 5, fill = NA),
+         rolling_avg_10 = rollmean(No_Smoothing, k = 10, fill = NA),
+         rolling_avg_20 = rollmean(No_Smoothing, k = 20, fill = NA))
+
+```
 
 **Question 8:**
 
 Plot the different averages on the *same plot* and describe what differences you see and why.  
 
 **Answer 8:**
+```{r}
+ggplot(global_temp, aes(x = Year)) +
+  geom_line(aes(y = No_Smoothing), color = "red") +
+  geom_line(aes(y = rolling_avg_5), color = "orange") +
+  geom_line(aes(y = rolling_avg_10), color = "green") +
+  geom_line(aes(y = rolling_avg_20), color = "yellow") +
+  labs(x = "Year", y = "Temperature Anomaly (°C)", 
+       title = "Global Temperature Anomalies with Running Averages")
 
+```
+
+The variation on the of the data gets less and less as the rolling average gets to a higher year span. The variation gets lower because you are averaging more amounts of data together.
 **Question 9:**
 
 By examining the data here, what evidence do you find or not find for such a pause? 
 
 **Answer 9:**
-
+There is a temporary slowing but an overall warming trend seen by the 10-year and 20-year showing that there is not a pause. 
 ## Longer term trends in CO2 Records
 
 When analyzing Earth’s climate, it is important to remember that Earth is 4.54 billion years old. Our analyses so far have only looked at recent history. How can we compare the recent data to prehistoric times? Are the current rates of change similar or different from those the earth has experienced in the past? To explore this, we can use data from ice cores drilled at the poles. 
@@ -158,9 +218,49 @@ Your answer to Question 10 is going to be a mix of code chunks and text that you
 **Answer 10:**
 
 ```{r}
+file <- "vostok.icecore.co2"
+
+vostok_co2 <- read_table(file, 
+                         col_names = c("Depth_m", "Age_Ice_BP", "Age_Air_BP", "CO2_ppm"),
+                         col_types = cols(
+                           Depth_m = col_double(), 
+                           Age_Ice_BP = col_integer(), 
+                           Age_Air_BP = col_integer(), 
+                           CO2_ppm = col_double()
+                         ),
+                         skip = 21)
+
+vostok_co2 <- vostok_co2 %>% arrange(Age_Air_BP)
 
 
 ```
+
+```{r}
+ggplot(vostok_co2, aes(x = Age_Air_BP, y = CO2_ppm)) +
+  geom_line(color = "blue") +
+  labs(x = "Years Before Present", y = "CO₂ Concentration (ppm)", 
+       title = "CO₂ Concentrations from Ice Core Data (Vostok, Antarctica)")
+
+```
+
+```{r}
+co2_combined <- bind_rows(
+  vostok_co2 %>% rename(year = Age_Air_BP, co2_ppm = CO2_ppm),
+  co2 %>% select(year, monthly_average) %>% rename(co2_ppm = monthly_average)
+)
+
+ggplot(co2_combined, aes(x = year, y = co2_ppm)) +
+  geom_line(color = "blue") +
+  labs(x = "Year", y = "CO2 Concentration (ppm)", 
+       title = "CO₂ Concentrations Over Time: Ice Core vs. Modern")
+
+```
+The data is historical CO2 concentrations from Vostok ice. The columns are is the depth in meters, the age of the ice sample in years before present, the age of the air sample in years before present, and CO2 concentration in parts per million. The data comes from glacial ice samples in Vostok, Antartica. 
+
+The earlier years have lower resolution and the more recent years have better resolution. There are more gaps in the earlier data. 
+
+The rate of change is very extreme as you can see from the plots. The conclusion from this is that the massive spike in CO2 levels is human-related with the higher increase closer to the present. 
+
 
 # Render and committing
 
