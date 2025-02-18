@@ -238,6 +238,7 @@ vostok_co2 <- vostok_co2 %>% arrange(Age_Air_BP)
 ```{r}
 ggplot(vostok_co2, aes(x = Age_Air_BP, y = CO2_ppm)) +
   geom_line(color = "blue") +
+  scale_x_reverse() +
   labs(x = "Years Before Present", y = "CO₂ Concentration (ppm)", 
        title = "CO₂ Concentrations from Ice Core Data (Vostok, Antarctica)")
 
@@ -249,10 +250,14 @@ co2_combined <- bind_rows(
   co2 %>% select(year, monthly_average) %>% rename(co2_ppm = monthly_average)
 )
 
+co2_combined <- co2_combined |> 
+  arrange(year)
+
 ggplot(co2_combined, aes(x = year, y = co2_ppm)) +
   geom_line(color = "blue") +
+  scale_x_reverse()+
   labs(x = "Year", y = "CO2 Concentration (ppm)", 
-       title = "CO₂ Concentrations Over Time: Ice Core vs. Modern")
+       title = "CO2 Concentrations Over Time: Ice Core vs. Modern")
 
 ```
 The data is historical CO2 concentrations from Vostok ice. The columns are is the depth in meters, the age of the ice sample in years before present, the age of the air sample in years before present, and CO2 concentration in parts per million. The data comes from glacial ice samples in Vostok, Antartica. 
